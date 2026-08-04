@@ -152,7 +152,7 @@ YOLO Keypoint, Kalman Filter와 `speedl` 제어는 다른 팀원이 주로 구�
 
 구역 자원은 정해진 순서로 획득하고, 필요한 자원 중 일부만 확보되면 모두 반납하는 DB Zone Lock 정책을 적용했습니다. 작업 완료 또는 실패 결과에 따라 로봇과 슬롯 상태를 복구해 다음 요청이 잘못된 점유 상태를 이어받지 않도록 했습니다.
 
-[코드 저장소](https://github.com/joyj0131-dev/Rokey_proj_03-Isaac-Sim-/)
+[상세 내용](projects/rokey_proj_03.md) · [코드 저장소](https://github.com/joyj0131-dev/Rokey_proj_03-Isaac-Sim-/)
 
 ---
 
