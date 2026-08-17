@@ -156,12 +156,47 @@ YOLO Keypoint, Kalman Filter와 `speedl` 제어는 다른 팀원이 주로 구�
 
 ---
 
+## Project 04 — Under-Guard | 2로봇 협동 자율 방역 감시 시스템
+
+| 항목 | 내용 |
+|---|---|
+| 기간 | 2026.08.05 ~ 2026.08.11 |
+| 환경 | Ubuntu 22.04, ROS 2 Humble, Python 3.10 |
+| 장비 | TurtleBot4 2대, OAK-D, RPLIDAR A1 |
+| 구분 | 8인 팀 프로젝트 |
+| 담당 | Project Manager 및 MySQL Database |
+
+TurtleBot4 2대가 실내를 교대 순찰하며 침입구와 덫을 점검하고, 쥐가 감지되면 추적·몰이 역할을 나누어 대응하는 ROS 2 기반 자율 방역 감시 시스템입니다.
+
+팀 전체 시스템은 SLAM·Nav2 자율주행, YOLO·OAK-D 객체 탐지, 협동 몰이 알고리즘, MySQL 기록 관리와 중앙 관제 화면으로 구성했습니다.
+
+### 담당 역할
+
+- Project Manager로서 일정, 요구사항과 모듈별 통합 순서 조율
+- 침입구·탐지·임무·덫 점검 이력을 위한 MySQL 데이터 구조 구성
+- 중앙 PC의 `db_node`로 Database 접근 경로 단일화
+- 조회는 ROS 2 Service, 비동기 저장은 Topic으로 분리
+- 로봇 노드·관제 UI와 Database 간 연동 확인
+- 네트워크 제약 상황에서 기능별·부분 연동 중심으로 검증 범위 재구성
+
+### 대표 설계 — Database 접근 경로 중앙화
+
+로봇 노드와 관제 UI가 MySQL에 각각 직접 접속하면 접속 정보와 스키마 의존성이 여러 모듈로 퍼질 수 있었습니다. 모든 Database 접근을 `db_node`로 모으고, 로봇과 UI는 ROS 2 인터페이스만 사용하도록 구성했습니다.
+
+실시간 상태는 `/fleet/status`, `/fleet/event`로 전달하고 과거 기록은 `/db/query`로 조회하도록 분리해, DB 조회 문제가 발생해도 실시간 로봇 상태 표시는 유지되도록 했습니다.
+
+SLAM·Nav2, AI Vision, 로봇 제어, 협동 몰이 알고리즘과 System Monitor는 각 담당자가 협업해 구현한 팀 성과이며, 본인의 직접 담당은 프로젝트 관리와 MySQL Database입니다.
+
+[상세 내용](projects/rokey_proj_04.md) · [코드 저장소](https://github.com/joyj0131-dev/2026_ROKEY_4_UnderGuard)
+
+---
+
 ## Tech Stack
 
-`ROS 2 Humble` · `Python` · `Doosan M0609` · `OnRobot RG2` · `RealSense` · `NVIDIA Isaac Sim 5.1` · `MySQL` · `PyQt/PySide6` · `OpenCV` · `Docker` · `Git/GitHub`
+`ROS 2 Humble` · `Python` · `Doosan M0609` · `TurtleBot4` · `OnRobot RG2` · `RealSense` · `OAK-D` · `RPLIDAR A1` · `NVIDIA Isaac Sim 5.1` · `MySQL` · `Flask` · `PyQt/PySide6` · `OpenCV` · `Docker` · `Git/GitHub`
 
 ## What I Learned
 
-Proj 1에서는 좌표만 정확하게 지정해도 실제 물체의 결합력과 접촉 오차 때문에 로봇 동작이 실패할 수 있다는 점을 경험했습니다. Proj 2에서는 움직이는 물체를 다루기 위해 검출, 위치·속도 추정, 연속 제어와 상태 관리가 함께 연결되어야 한다는 점을 배웠습니다.
+Proj 1에서는 좌표만 정확하게 지정해도 실제 물체의 결합력과 접촉 오차 때문에 로봇 동작이 실패할 수 있다는 점을 경험했습니다. Proj 2에서는 움직이는 물체를 다루기 위해 검출, 위치·속도 추정, 연속 제어와 상태 관리가 함께 연결되어야 한다는 점을 배웠습니다. Proj 4에서는 다중 로봇 시스템의 실시간 상태와 영속 기록을 분리하고, 통합 환경의 제약과 기능 검증 결과를 구분해 관리하는 방법을 배웠습니다.
 
 또한 팀 프로젝트에서 담당 기능만 완성하는 것에 그치지 않고, 다른 모듈의 입출력과 실패 상황을 이해하며 전체 시스템을 통합하는 경험을 쌓았습니다.
