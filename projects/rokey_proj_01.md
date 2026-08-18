@@ -4,8 +4,15 @@
 
 사용자가 입력한 LEGO 도안을 분석하고, Doosan M0609와 OnRobot RG2 그리퍼를 이용하여 같은 형태로 조립한 뒤 블록을 순차적으로 해체하는 ROS 2 기반 팀 프로젝트입니다.
 
-- 원본 저장소: [rokey_proj_01](https://github.com/joyj0131-dev/rokey_proj_01)
-- 시연 영상: [YouTube](https://youtu.be/rr9P0iLsZmI)
+| 항목 | 내용 |
+|---|---|
+| 기간 | 2026.06.17 ~ 2026.06.30 |
+| 구성 | 3인 팀 프로젝트 |
+| 환경 | ROS 2 Humble · Python · Doosan M0609 · OnRobot RG2 |
+| 담당 | Robot Control Node |
+
+- 코드 저장소: [rokey_proj_01](https://github.com/joyj0131-dev/rokey_proj_01)
+- 시연 영상: [YouTube](https://youtu.be/4dupj63IoR0)
 
 ## 프로젝트 목표
 
@@ -140,14 +147,16 @@ def force_press(self, pose: CartesianPose) -> None:
 - 도안과 조립 순서에 따른 LEGO 자동 Pick & Place
 - 힘 제어와 Spiral을 이용한 블록 결합
 - 역순 해체 및 적층 블록 재압착 적용
-- 반복 시험 기준 약 80%대의 해체 성공률
+- 당시 반복 시험에서 조립 95/100회, 해체 16/20회 성공
+
+> 해당 결과는 당시 LEGO와 고정 작업 환경에서 수행한 프로젝트 내부 반복 시험 기준이며, 일반화된 성능 지표나 공식 벤치마크는 아닙니다.
 
 ## 한계와 개선 방향
 
 - Pick 좌표가 고정값이므로 트레이 위치 변경 시 재설정 필요
 - 블록 종류와 결합 상태에 따라 힘과 Spiral 파라미터가 달라짐
 - 여러 블록이 함께 빠지는 현상을 완전히 제거하지 못함
-- 성공률의 시험 조건과 횟수를 당시 체계적으로 기록하지 못함
+- 시험 횟수는 기록했지만 조명·블록 상태 등 세부 시험 조건을 체계적으로 통제하지 못함
 - 향후 비전 기반 Pick 좌표 보정과 힘 데이터 기반 결합 판정 필요
 
 ## 회고

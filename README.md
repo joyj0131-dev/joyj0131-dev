@@ -1,193 +1,185 @@
-# 조영진 | Robotics Software Developer
+# 조영진 | Robot Software Developer
 
-ROS 2와 두산 협동로봇, NVIDIA Isaac Sim 5.1을 활용한 팀 프로젝트를 수행하며 실제 로봇 제어, 물체 조작, 다중 로봇 관제와 다중 노드 시스템 통합을 경험했습니다.
+**로봇 소프트웨어 개발 · 로봇 자동화**
 
-고정된 작업 환경에서 LEGO를 조립·해체하는 로봇 제어부터 비전으로 움직이는 공구를 추적하고 작업자에게 전달하는 시스템의 상태 관리, 디지털 트윈 기반 자율 발렛파킹의 관제 알고리즘까지 수행했습니다. 각 프로젝트에서는 제가 주로 담당한 부분과 팀원 구현을 연결하며 배운 부분을 구분해 정리했습니다.
+ROS 2 기반 실물 협동로봇 제어와 다중 노드 시스템 통합을 경험했습니다. Doosan M0609·OnRobot RG2를 이용한 조립·해체와 이동 공구 전달, NVIDIA Isaac Sim 5.1 기반 다중 로봇 관제, TurtleBot4 기반 자율 방역 감시 프로젝트를 수행했습니다.
+
+담당 기능의 구현에 그치지 않고 다른 모듈의 입력·출력, 작업 순서와 실패 상황을 연결해 전체 시스템이 동작하도록 만드는 과정에 집중했습니다.
 
 ## Core Experience
 
-- ROS 2 기반 다중 노드 로봇 시스템 통합
-- Doosan M0609 및 OnRobot RG2 실기 제어
-- 힘 제어와 Spiral 동작을 이용한 LEGO 조립·해체
-- ROS 2 Action 기반 Task Manager와 상태 전이 관리
-- 작업 상태와 안전 상태 분리, 실패·복구·재개 처리
-- Docker 기반 MediaPipe 손 추적 노드와 ROS 2 연결
-- YOLO Keypoint, Kalman Filter, `speedl` 모듈 통합 테스트 참여
-- NVIDIA Isaac Sim 5.1 기반 디지털 트윈 프로젝트
-- 다중 로봇 관제 및 ROS 2 Service·Action 기반 작업 라우팅
-- MySQL 기반 운영 상태 관리
-- 중앙 안전 상태와 Fail-safe 기반 요청 차단·복구 처리
+| 역량 | 경험 |
+| --- | --- |
+| 실물 협동로봇 제어 | Doosan M0609·RG2 기반 Pick & Place · 힘 제어 조립·해체 · 이동 공구 파지·전달 |
+| ROS 2 작업 관리 | Action 기반 Task Manager · 다중 노드 작업 순서와 상태 전이 관리 · STOP/RESET/RESUME |
+| 통합 시험·문제 해결 | 결합·해체 반복 시험 · 검출 유실·파지 실패·Fault 원인별 분기 · 모듈 연동 오류 분석 |
+| 다중 로봇 관제·데이터 | Isaac Sim 다중 로봇 작업 라우팅 · 자원·안전 상태 관리 · MySQL 운영 이력 관리 |
 
 ---
 
-## Project 01 — LEGO 블록 자동 조립·해체 시스템
+## Project 02 — 이동 공구 인식 및 전달 로봇
 
-사용자가 입력한 LEGO 도안을 분석하고, Doosan M0609와 RG2 그리퍼로 같은 형태를 조립한 뒤 블록을 순차적으로 해체하는 ROS 2 기반 시스템입니다.
+| 항목 | 내용 |
+| --- | --- |
+| 기간 | 2026.07.01 ~ 2026.07.14 |
+| 구성 | 3인 팀 프로젝트 |
+| 환경 | ROS 2 Humble · Python · Doosan M0609 · OnRobot RG2 · RealSense · Docker |
+| 담당 | Robot Control · Task Manager |
 
-### 전체 흐름
+사용자가 음성 또는 GUI로 요청한 공구를 컨베이어에서 검출·추적하고, 협동로봇이 이동 중인 공구를 파지한 뒤 작업자의 손으로 전달하는 시스템입니다.
 
-```text
-도안 입력 → 색상·배치 분석 → 조립 순서 계산
-→ 키팅 트레이 Pick → 목표 좌표 Place
-→ 힘 제어·Spiral 결합 → 결과 확인
-→ 역순 해체 → 키팅 트레이 회수
-```
-
-### 담당 역할
-
-- `Robot Control Node` 담당
-- Doosan `movel`, `amovel` 기반 Pick & Place
-- 고정 키팅 트레이의 Pick 좌표 설정
-- 상위 알고리즘이 계산한 Place 좌표 적용
-- 힘 제어와 Spiral 동작을 이용한 LEGO 결합
-- 역순 해체, 해체 전 재압착 및 동작 파라미터 조정
-
-### 대표 문제 해결 — 해체 전 재압착
-
-블록 하나를 분리하면 남은 블록의 결합도 느슨해져 다음 해체에서 여러 블록이 함께 빠지는 문제가 있었습니다. 적층 블록은 Spiral 해체 전에 힘 제어로 다시 눌러 결합 상태를 안정화했습니다.
-
-```python
-def force_press(self, pose: CartesianPose) -> None:
-    self._task_compliance_ctrl(stx=[
-        PLACE_XY_STIFFNESS, PLACE_XY_STIFFNESS, PLACE_Z_STIFFNESS,
-        PLACE_ROT_STIFFNESS, PLACE_ROT_STIFFNESS, PLACE_ROT_STIFFNESS,
-    ])
-    self._set_desired_force(
-        fd=[0.0, 0.0, -PLACE_FORCE_Z_N, 0.0, 0.0, 0.0],
-        dir=[0, 0, 1, 0, 0, 0],
-        time=0,
-        mod=self._DR_FC_MOD_ABS,
-    )
-    self.move_linear(pose, "PREPRESS_DESCEND",
-                     vel=PLACE_LINEAR_VELOCITY,
-                     acc=PLACE_LINEAR_ACCELERATION)
-    self._release_force()
-    self._release_compliance_ctrl()
-```
-
-반복 시험에서 해체 성공률은 약 80%대였습니다. 완전한 해결에는 도달하지 못했지만, 단순 수직 인장 방식보다 여러 블록이 함께 분리되는 현상을 줄였습니다.
-
-[상세 내용](projects/rokey_proj_01.md) · [코드 저장소](https://github.com/joyj0131-dev/rokey_proj_01) · [시연 영상](https://youtu.be/rr9P0iLsZmI)
-
----
-
-## Project 02 — 이동 공구 전달 로봇
-
-사용자가 음성 또는 GUI로 요청한 공구를 컨베이어에서 검출하고, 움직임을 추적해 파지한 뒤 작업자의 손으로 전달하는 ROS 2 기반 협동로봇 시스템입니다.
-
-### 전체 흐름
+### 시스템 흐름
 
 ```text
 음성·GUI 공구 요청 → YOLO Keypoint 파지점 검출
-→ RealSense 3D 위치 계산 → Kalman Filter 이동 추정
+→ RealSense 3D 좌표 계산 → Kalman Filter 위치·속도 추정
 → speedl 연속 추종·파지 → 작업자 손 추적
 → 당김 감지·그리퍼 개방 → 원점 복귀
 ```
 
 ### 담당 역할
 
-- `Task Manager`와 전체 작업 상태 전이 관리
-- Vision 모드 전환 및 Robot Action 요청·결과 처리
-- 추적 유실, 파지 실패, 취소, Fault 처리
-- STOP, RESET, RESUME 흐름 관리
-- 작업 상태와 안전 상태를 GUI로 전달
+- `Robot Control`과 `Task Manager` 개발
+- Vision 모드 전환 및 Robot Action 시작·취소·결과 처리
+- 공구 요청부터 접근·파지·전달·복귀까지 전체 작업 상태 전이 관리
+- 추적 유실, 파지 실패, 작업 취소와 Fault 원인별 분기
+- 작업 상태와 안전 상태를 분리하고 STOP/RESET/RESUME 흐름 구성
 - Docker 기반 MediaPipe 손 추적 노드의 초기 ROS 2 연결
-- 비전·추적·서보 제어 모듈 통합 테스트 참여
+- 비전·추적·이동 파지 모듈의 실물 로봇 연동 시험 및 실패 원인 분석
 
-### 대표 문제 해결 — 중단 상태에 따른 재개 정책
+### 담당 경계
 
-Fault 이후 모든 작업을 같은 방식으로 재시작하지 않았습니다. 공구 파지가 확인된 이후에는 전달 작업을 이어서 수행하고, 파지 상태가 불확실한 단계에서는 공구 검출부터 다시 시작하도록 구분했습니다.
+Kalman Filter와 `speedl` 기반 이동 공구 파지 알고리즘은 팀원이 주로 구현했습니다. 저는 Robot Control과 Task Manager를 담당하고, 해당 알고리즘의 결과가 로봇의 접근·파지·전달 동작과 전체 작업 상태에 연결되도록 통합·시험했습니다.
 
-```python
-def _capture_resume_snapshot(self):
-    if self.state in _RESUME_CONTINUE_STATES:
-        # 파지가 검증된 상태: 중단된 전달 작업을 계속 수행
-        self._resume_kind = 'continue'
-        self._resume_state = self.state
-        self._resume_tool = self.current_tool
-        self._resume_grasp_spec = self._active_grasp_spec
-    elif self.state in _RESUME_RETRY_PICK_STATES:
-        # 파지 상태가 불확실함: 그리퍼를 열고 검출부터 재시도
-        self._resume_kind = 'retry_pick'
-        self._resume_state = self.state
-        self._resume_tool = self.current_tool
-        self._resume_grasp_spec = None
-```
+### 대표 문제 해결 — 실패 원인별 복구와 작업 재개
 
-YOLO Keypoint, Kalman Filter와 `speedl` 제어는 다른 팀원이 주로 구현했습니다. 저는 해당 결과가 전체 작업 흐름에 연결되도록 상태와 Action 결과를 관리하고, 통합 과정에서 각 모듈의 역할과 데이터 흐름을 배웠습니다.
+추적 유실과 타임아웃은 공구 검출 단계로 되돌려 재시도하고, 정의되지 않은 오류는 자동 재시도하지 않고 Fault로 전환했습니다. STOP 이후에는 파지 검증 여부를 기준으로 전달 작업을 이어서 수행하거나 그리퍼를 열고 검출부터 다시 시작하도록 구분했습니다.
 
-[상세 내용](projects/rokey_proj_02.md) · [코드 저장소](https://github.com/joyj0131-dev/rokey_proj_02) · [시연 영상](https://youtu.be/YrdxbWTCtsk)
+[상세 내용](projects/rokey_proj_02.md) · [코드 저장소](https://github.com/joyj0131-dev/rokey_proj_02) · [시연 영상](https://youtu.be/WvdL0fCqzR0)
 
 ---
 
 ## Project 03 — 디지털 트윈 기반 자율 발렛파킹 로봇 시스템
 
 | 항목 | 내용 |
-|---|---|
+| --- | --- |
 | 기간 | 2026.07.15 ~ 2026.07.29 |
-| 환경 | Ubuntu 22.04, ROS 2 Humble, NVIDIA Isaac Sim 5.1 |
-| 구분 | 4인 팀 프로젝트 |
-| 담당 | 팀장 및 관제 알고리즘 |
+| 구성 | 4인 팀 프로젝트 |
+| 환경 | ROS 2 Humble · Python · NVIDIA Isaac Sim 5.1 · MySQL |
+| 담당 | 팀장 · 관제 알고리즘 · MySQL Database |
 
-입차·출차 전용 메카넘 로봇 4대가 차량 하부로 진입해 차량을 들어 올리고, 지정된 주차 슬롯까지 운반하는 디지털 트윈 기반 자율 발렛파킹 시스템입니다.
+메카넘 로봇 2대가 한 조를 이루는 2개 팀, 총 4대가 차량 하부로 진입해 차량을 들어 올리고 입·출차 요청에 따라 지정된 주차 슬롯까지 협동 운반하는 디지털 트윈 시스템입니다.
 
-팀 전체 시스템은 ArUco, 휠 오도메트리, Depth Camera, LiDAR, ROS 2 Service·Action과 MySQL 기반 관제 시스템을 사용했습니다.
+### 시스템 흐름
+
+```text
+입·출차 요청 → 중앙 안전 상태·중복 작업 확인
+→ 2대 1조 로봇 배정 → 주차 슬롯 예약·구역 자원 획득
+→ 차량 하부 진입·정렬 → 리프트·협동 운반
+→ 지정 슬롯 안착 → DB 갱신·자원 복구 → 로봇 복귀
+```
 
 ### 담당 역할
 
-- 팀장으로서 프로젝트 일정과 기능 인터페이스 조율
-- 관제 알고리즘 설계 및 구현
-- `request_type`에 따른 ENTRY·EXIT 작업 라우팅
-- 입차·출차 전용 로봇쌍의 상태 확인과 배정
-- 빈 주차 슬롯 탐색 및 예약
-- ROS 2 Service·Action 기반 비동기 작업 실행 연결
-- 중앙 안전 상태가 `NORMAL`이 아닐 때 신규 작업 차단
+- 팀장으로서 일정과 기능 인터페이스 조율
+- `request_type` 기반 ENTRY·EXIT 작업 라우팅
+- 입차·출차 전용 로봇쌍과 빈 주차 슬롯 배정
+- ROS 2 Service 요청과 비동기 Action 실행 연결
+- Lock, 차량별 활성 작업 검사와 정렬된 Zone Lock으로 자원 충돌 방지
+- 중앙 안전 상태가 `NORMAL`이 아닐 때 신규 요청 차단
 - 차량·로봇·슬롯·작업·안전 상태의 MySQL 연동
 - 로봇 4대의 Odometry를 관제 좌표로 변환해 DB에 기록
-- 관제·로봇 제어·비전·UI 모듈 통합 테스트
 
-### 대표 문제 해결 — 동시 요청의 중복 작업과 자원 충돌 방지
+### 대표 문제 해결 — 동시 요청과 자원 충돌 방지
 
-요청이 동시에 접수되면 같은 차량의 작업이 중복 생성되거나 여러 로봇이 같은 구역과 슬롯을 점유할 수 있었습니다. 이를 막기 위해 작업 접수 구간을 Lock으로 직렬화하고, 차량별 활성 작업과 중앙 안전 상태를 먼저 검사했습니다. 안전 상태가 `NORMAL`이 아니면 신규 요청을 거부하도록 구성했습니다.
+작업 접수 구간을 Lock으로 직렬화하고 차량별 활성 작업과 중앙 안전 상태를 확인했습니다. 구역 자원은 정해진 순서로 획득하고, 필요한 자원 중 일부만 확보되면 모두 반납하도록 구성했습니다. 작업 완료·실패 결과에 따라 로봇과 슬롯 상태를 복구해 잘못된 점유 상태가 다음 요청으로 이어지지 않도록 했습니다.
 
-구역 자원은 정해진 순서로 획득하고, 필요한 자원 중 일부만 확보되면 모두 반납하는 DB Zone Lock 정책을 적용했습니다. 작업 완료 또는 실패 결과에 따라 로봇과 슬롯 상태를 복구해 다음 요청이 잘못된 점유 상태를 이어받지 않도록 했습니다.
+### 현재 구현과 개선 방향
 
-[상세 내용](projects/rokey_proj_03.md) · [코드 저장소](https://github.com/joyj0131-dev/Rokey_proj_03-Isaac-Sim-/)
+현재는 ArUco·휠 오도메트리 기반 전역 위치 추정과 Depth 기반 차량 하부 정렬을 사용합니다. 이후에는 SLAM·Nav2와 Dijkstra 기반 전역 경로 계획, Costmap 장애물 회피를 결합하고, 근거리 도킹·차량 하부 진입에는 ArUco·Depth 정밀 정렬을 유지하는 혼합 구조로 확장할 수 있습니다.
+
+> SLAM·Nav2·Dijkstra 확장은 현재 구현 결과가 아닌 추후 개발 방향입니다.
+
+[상세 내용](projects/rokey_proj_03.md) · [코드 저장소](https://github.com/joyj0131-dev/Rokey_proj_03-Isaac-Sim-/) · [시연 영상](https://youtu.be/u0ruc__gF-U)
 
 ---
 
-## Project 04 — Under-Guard | 2로봇 협동 자율 방역 감시 시스템
+## Project 01 — LEGO 블록 자동 조립·해체 시스템
 
 | 항목 | 내용 |
-|---|---|
-| 기간 | 2026.08.05 ~ 2026.08.11 |
-| 환경 | Ubuntu 22.04, ROS 2 Humble, Python 3.10 |
-| 장비 | TurtleBot4 2대, OAK-D, RPLIDAR A1 |
-| 구분 | 8인 팀 프로젝트 |
-| 담당 | Project Manager 및 MySQL Database |
+| --- | --- |
+| 기간 | 2026.06.17 ~ 2026.06.30 |
+| 구성 | 3인 팀 프로젝트 |
+| 환경 | ROS 2 Humble · Python · Doosan M0609 · OnRobot RG2 |
+| 담당 | Robot Control Node |
 
-TurtleBot4 2대가 실내를 교대 순찰하며 침입구와 덫을 점검하고, 쥐가 감지되면 추적·몰이 역할을 나누어 대응하는 ROS 2 기반 자율 방역 감시 시스템입니다.
+사용자가 입력한 이미지를 색상·배치 정보로 변환해 조립 도안을 만들고, 협동로봇이 고정 키팅 트레이의 블록을 가져와 도안대로 조립한 뒤 역순으로 해체·회수하는 시스템입니다.
 
-팀 전체 시스템은 SLAM·Nav2 자율주행, YOLO·OAK-D 객체 탐지, 협동 몰이 알고리즘, MySQL 기록 관리와 중앙 관제 화면으로 구성했습니다.
+### 시스템 흐름
+
+```text
+도안 입력·분석 → 조립 순서 계산
+→ 고정 좌표 Pick → 계산 좌표 Place
+→ 힘 제어·Spiral 결합 → 조립 확인
+→ 역순 해체·재압착 → 키팅 트레이 회수
+```
 
 ### 담당 역할
 
-- Project Manager로서 일정, 요구사항과 모듈별 통합 순서 조율
+- `Robot Control Node` 개발 및 실제 로봇 연동
+- Doosan `movel`, `amovel` 기반 Pick & Place
+- 고정 키팅 트레이의 블록별 Pick 좌표 설정
+- 상위 알고리즘이 계산한 Place 좌표와 적층 높이 적용
+- 힘 제어와 Spiral 동작을 이용한 LEGO 결합
+- 역순 해체, 해체 전 재압착과 동작 파라미터 조정
+
+### 대표 문제 해결 — 해체 전 재압착
+
+상단 블록을 분리하면 아래 블록의 결합력이 약해져 여러 블록이 함께 빠지는 문제가 있었습니다. 다음 블록을 해체하기 전에 힘 제어로 적층부를 다시 눌러 결합 상태를 복원하고, Spiral 동작으로 목표 블록의 결합을 점진적으로 풀어 한 개씩 분리했습니다.
+
+당시 반복 시험에서 조립은 95/100회, 해체는 16/20회 성공했습니다. 이는 해당 LEGO와 고정 작업 환경에서 수행한 프로젝트 내부 반복 시험 결과이며 일반화된 성능 지표는 아닙니다.
+
+[상세 내용](projects/rokey_proj_01.md) · [코드 저장소](https://github.com/joyj0131-dev/rokey_proj_01) · [시연 영상](https://youtu.be/4dupj63IoR0)
+
+---
+
+## Project 04 — 2로봇 협동 방역 감시·데이터 관제 시스템 (Under-guard)
+
+| 항목 | 내용 |
+| --- | --- |
+| 기간 | 2026.08.05 ~ 2026.08.11 |
+| 구성 | 8인 팀 프로젝트 |
+| 환경 | ROS 2 Humble · Python · TurtleBot4 ×2 · OAK-D · RPLIDAR A1 · MySQL |
+| 담당 | Project Manager · MySQL Database |
+
+TurtleBot4 2대가 실내를 교대 순찰하며 침입구와 덫을 점검하고, 쥐가 감지되면 추적·몰이 역할을 나누어 대응하는 자율 방역 감시 시스템입니다. 덫 설치는 TurtleBot4의 구조적 한계로 작업자가 직접 수행하고, 로봇은 설치 위치 안내와 설치 후 점검을 담당합니다.
+
+### 시스템 흐름
+
+```text
+관제 START → 1대 순찰·1대 대기 → 침입구 검증
+→ 작업자 덫 설치·로봇 점검 → TRACK·SWEEP·HERD 역할 배정
+→ 탐지·임무·점검 결과 DB 기록 → 복귀·도킹·순찰 교대
+```
+
+### 담당 역할
+
+- Project Manager로서 요구사항, 시스템 아키텍처와 통합 순서 조율
 - 침입구·탐지·임무·덫 점검 이력을 위한 MySQL 데이터 구조 구성
 - 중앙 PC의 `db_node`로 Database 접근 경로 단일화
-- 조회는 ROS 2 Service, 비동기 저장은 Topic으로 분리
-- 로봇 노드·관제 UI와 Database 간 연동 확인
-- 네트워크 제약 상황에서 기능별·부분 연동 중심으로 검증 범위 재구성
+- 비동기 저장은 Topic, 결과가 필요한 조회는 ROS 2 Service로 분리
+- 로봇 노드·관제 UI와 Database 연동
+- 짧은 개발 기간과 네트워크 제약에 맞춰 기능별·부분 연동 중심으로 검증 범위 구성
 
-### 대표 설계 — Database 접근 경로 중앙화
+### 대표 설계 — 운영 기록을 관제·보고서로 연결
 
-로봇 노드와 관제 UI가 MySQL에 각각 직접 접속하면 접속 정보와 스키마 의존성이 여러 모듈로 퍼질 수 있었습니다. 모든 Database 접근을 `db_node`로 모으고, 로봇과 UI는 ROS 2 인터페이스만 사용하도록 구성했습니다.
+실시간 상태는 `/fleet/status`, `/fleet/event`로 전달하고 과거 기록은 `/db/query`로 조회하도록 분리했습니다. 탐지·임무·덫 설치·점검 이력을 보고서 데이터로 연결해 관리자는 로봇별 임무와 운영 상태를, 고객은 방역 결과를 객관적인 기록으로 확인할 수 있게 했습니다. 개발자는 반복 실패와 운영 패턴을 분석해 추후 개선 방향을 도출할 수 있습니다.
 
-실시간 상태는 `/fleet/status`, `/fleet/event`로 전달하고 과거 기록은 `/db/query`로 조회하도록 분리해, DB 조회 문제가 발생해도 실시간 로봇 상태 표시는 유지되도록 했습니다.
+### 검증 범위
 
-SLAM·Nav2, AI Vision, 로봇 제어, 협동 몰이 알고리즘과 System Monitor는 각 담당자가 협업해 구현한 팀 성과이며, 본인의 직접 담당은 프로젝트 관리와 MySQL Database입니다.
+SLAM·Nav2 순찰, 객체 탐지, DB Service·Topic과 로봇별 기능을 개별 시험하고 가능한 범위에서 부분 연동했습니다. 짧은 개발 기간과 교육장 네트워크의 지연·연결 불안정으로 두 로봇과 중앙 PC를 연결한 전체 시나리오는 충분히 반복 시험하지 못했습니다.
 
-[상세 내용](projects/rokey_proj_04.md) · [코드 저장소](https://github.com/joyj0131-dev/2026_ROKEY_4_UnderGuard)
+[상세 내용](projects/rokey_proj_04.md) · [코드 저장소](https://github.com/joyj0131-dev/2026_ROKEY_4_UnderGuard) · [시연 영상](https://youtu.be/CGhaA_KwVCc)
 
 ---
 
@@ -197,6 +189,7 @@ SLAM·Nav2, AI Vision, 로봇 제어, 협동 몰이 알고리즘과 System Monit
 
 ## What I Learned
 
-Proj 1에서는 좌표만 정확하게 지정해도 실제 물체의 결합력과 접촉 오차 때문에 로봇 동작이 실패할 수 있다는 점을 경험했습니다. Proj 2에서는 움직이는 물체를 다루기 위해 검출, 위치·속도 추정, 연속 제어와 상태 관리가 함께 연결되어야 한다는 점을 배웠습니다. Proj 4에서는 다중 로봇 시스템의 실시간 상태와 영속 기록을 분리하고, 통합 환경의 제약과 기능 검증 결과를 구분해 관리하는 방법을 배웠습니다.
-
-또한 팀 프로젝트에서 담당 기능만 완성하는 것에 그치지 않고, 다른 모듈의 입출력과 실패 상황을 이해하며 전체 시스템을 통합하는 경험을 쌓았습니다.
+- Project 01: 실제 물체 조작에서는 좌표뿐 아니라 접촉력과 주변 물체의 결합 상태까지 고려해야 한다는 점
+- Project 02: 이동 물체를 다루려면 검출·예측·연속 제어와 실패·복구 상태가 하나의 흐름으로 연결되어야 한다는 점
+- Project 03: 다중 로봇 작업에서는 경로 제어뿐 아니라 요청, 로봇·슬롯·구역 자원과 안전 상태의 일관성이 중요하다는 점
+- Project 04: 다중 로봇의 실시간 제어 흐름과 영속 기록을 분리하고, 제한된 환경에서는 구현 범위와 검증 범위를 구분해야 한다는 점

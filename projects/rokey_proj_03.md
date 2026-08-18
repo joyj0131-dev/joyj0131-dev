@@ -7,8 +7,9 @@
 - 기간: 2026.07.15 ~ 2026.07.29
 - 환경: Ubuntu 22.04, ROS 2 Humble, NVIDIA Isaac Sim 5.1
 - 구분: 4인 팀 프로젝트
-- 담당: 팀장 및 관제 알고리즘
-- 원본 저장소: [Rokey_proj_03-Isaac-Sim-](https://github.com/joyj0131-dev/Rokey_proj_03-Isaac-Sim-/)
+- 담당: 팀장 · 관제 알고리즘 · MySQL Database
+- 코드 저장소: [Rokey_proj_03-Isaac-Sim-](https://github.com/joyj0131-dev/Rokey_proj_03-Isaac-Sim-/)
+- 시연 영상: [YouTube](https://youtu.be/u0ruc__gF-U)
 
 ## 프로젝트 목표
 
@@ -45,7 +46,7 @@
 | 구나영 | AI Vision |
 | 신동수 | 하드웨어 에셋 및 UI |
 | 이승재 | 로봇 제어 |
-| 조영진 | 팀장 및 관제 알고리즘 |
+| 조영진 | 팀장 · 관제 알고리즘 · MySQL Database |
 
 ## 시스템 구성
 
@@ -145,13 +146,13 @@ NORMAL
 현재 ArUco·휠 오도메트리 기반 주행을 확장해 다음 구조를 학습하고 적용할 계획입니다.
 
 - SLAM을 이용한 주차장 지도 생성
-- Nav2 기반 전역 경로 계획
+- Nav2와 Dijkstra 기반 전역 경로 계획
 - Costmap 기반 장애물 반영과 회피
 - 주차장 전역 이동에는 SLAM·Nav2 적용
 - 도킹과 차량 하부 진입·정렬에는 ArUco·Depth 유지
 - 전역 자율주행과 근거리 정밀 제어를 결합한 혼합 구조 검증
 
-> SLAM·Nav2 구조는 현재 프로젝트와 저장소에 구현되지 않았으며, Isaac Sim에서 성능 검증된 결과도 아닙니다. 추후 학습·개발·검증할 개선 계획입니다.
+> SLAM·Nav2·Dijkstra 구조는 현재 프로젝트와 저장소에 구현되지 않았으며, Isaac Sim에서 성능 검증된 결과도 아닙니다. 추후 학습·개발·검증할 개선 계획입니다.
 
 ## 협업 및 회고
 

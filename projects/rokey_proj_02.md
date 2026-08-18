@@ -1,11 +1,18 @@
-# Project 02 — 이동 공구 전달 로봇
+# Project 02 — 이동 공구 인식 및 전달 로봇
 
 ## 프로젝트 개요
 
 사용자가 음성 또는 GUI로 요청한 공구를 컨베이어에서 검출하고, 이동을 추적해 파지한 뒤 작업자의 손으로 전달하는 ROS 2 기반 협동로봇 팀 프로젝트입니다.
 
-- 원본 저장소: [rokey_proj_02](https://github.com/joyj0131-dev/rokey_proj_02)
-- 시연 영상: [YouTube](https://youtu.be/YrdxbWTCtsk)
+| 항목 | 내용 |
+|---|---|
+| 기간 | 2026.07.01 ~ 2026.07.14 |
+| 구성 | 3인 팀 프로젝트 |
+| 환경 | ROS 2 Humble · Python · Doosan M0609 · OnRobot RG2 · RealSense · Docker |
+| 담당 | Robot Control · Task Manager |
+
+- 코드 저장소: [rokey_proj_02](https://github.com/joyj0131-dev/rokey_proj_02)
+- 시연 영상: [YouTube](https://youtu.be/WvdL0fCqzR0)
 
 ## 프로젝트 목표
 
@@ -40,7 +47,8 @@
 | Task Manager | 전체 상태 전이와 실패·복구 관리 | 본인 주 담당 |
 | Object Detection | YOLO Keypoint 공구 검출 | 팀원 |
 | Vision Node | RealSense 3D 복원과 추적 | 팀원 |
-| Robot Control | Kalman, speedl, 그리퍼와 로봇 실행 | 팀원 2 주 담당·공동 통합 |
+| Robot Control | Action 실행, M0609·RG2 동작과 접근·파지·전달 제어 | 본인 주 담당 |
+| Moving Pick Control | Kalman Filter, speedl 기반 이동 공구 추종·파지 | 팀원 주 담당·본인 통합 시험 |
 | Hand Tracking | Docker 기반 MediaPipe 손·주먹 검출 | 본인 초기 연결·팀 공동 개선 |
 
 ## 프로젝트 핵심 기술
@@ -55,16 +63,18 @@
 
 ## My Contribution
 
+- `Robot Control`과 `Task Manager` 개발
 - `Task Manager`와 전체 작업 상태 정의
 - 사용자의 공구 요청부터 전달 완료까지 상태 전이 관리
 - Vision 모드 전환과 Robot Action 요청·결과 처리
+- M0609·RG2의 접근·파지·전달 동작과 Action 실행 흐름 연동
 - 복구 가능한 추적 실패와 Fault 분기
 - 작업 상태와 안전 상태의 독립 관리
 - STOP, RESET, RESUME 처리
 - Docker 기반 손 추적 노드의 초기 ROS 2 연결
 - GUI, 비전, 제어와 음성 모듈의 통합 테스트 지원
 
-YOLO Keypoint는 팀원 3, Kalman Filter와 `speedl` 서보 제어는 팀원 2가 주로 구현했습니다. 해당 기술을 제 구현으로 표현하지 않고, Task Manager와 통합 과정에서 데이터 흐름과 동작 원리를 배운 경험으로 구분합니다.
+YOLO Keypoint 검출과 Kalman Filter·`speedl` 기반 이동 공구 파지 알고리즘은 팀원이 주로 구현했습니다. 저는 Robot Control과 Task Manager를 담당하고, 해당 결과가 로봇의 접근·파지·전달 동작과 전체 작업 상태에 연결되도록 통합·시험했습니다.
 
 ## 주요 문제 해결
 
@@ -126,7 +136,7 @@ else:
     vz = 0.0
 ```
 
-저는 이 제어를 직접 구현하지 않았으며, 통합 시험에서 파지 Action의 시작·성공·실패 결과와 다음 상태 전이를 확인했습니다.
+이동 파지 알고리즘은 팀원이 구현했으며, 저는 Robot Control과 Task Manager에서 파지 Action의 시작·성공·실패 결과를 처리하고 다음 상태 전이를 연결했습니다.
 
 ### 4. 복구 가능한 실패와 Fault 구분
 
@@ -233,7 +243,7 @@ class Safety:
 
 ## 협업 및 회고
 
-주 담당은 Task Manager였지만 담당 모듈에만 머무르지 않고 YOLO Keypoint, Kalman Filter, `speedl`, Docker 손 추적 모듈의 통합 시험을 지원했습니다.
+Robot Control과 Task Manager를 담당하며 YOLO Keypoint, Kalman Filter, `speedl`, Docker 손 추적 모듈의 결과를 실제 로봇 동작과 전체 작업 흐름에 연결했습니다.
 
 각 알고리즘을 모두 직접 구현한 것은 아니지만, 다른 팀원의 구현이 어떤 데이터를 만들고 그 결과가 다음 노드와 로봇 동작에 어떻게 사용되는지 배웠습니다. 여러 ROS 2 노드가 연결된 시스템에서는 개별 기능뿐 아니라 실행 순서, 결과 전달과 실패 정책이 중요하다는 점을 경험했습니다.
 
