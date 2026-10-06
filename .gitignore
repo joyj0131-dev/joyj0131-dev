@@ -1,0 +1,6 @@
+# 이 저장소에는 README.md와 projects/ 만 올린다.
+# 이력서·포트폴리오·PPT 등 개인정보가 담긴 파일은 모두 제외한다.
+/*
+!/.gitignore
+!/README.md
+!/projects/
